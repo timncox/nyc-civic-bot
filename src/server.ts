@@ -265,6 +265,33 @@ app.post("/api/join", async (req, res) => {
 
 export { mmpClient, civicClient, app, sendGroup };
 
+// --- Cron scheduling ---
+
+import cron from "node-cron";
+import {
+  broadcast311Digest,
+  broadcastAttendance,
+  broadcastNewLegislation,
+} from "./broadcasts.js";
+
+// 311 digest: every Monday at 9am ET
+cron.schedule("0 9 * * 1", () => {
+  console.log("Running 311 digest broadcast...");
+  broadcast311Digest(mmpClient, civicClient).catch(console.error);
+}, { timezone: "America/New_York" });
+
+// Attendance: every Wednesday at 10am ET
+cron.schedule("0 10 * * 3", () => {
+  console.log("Running attendance broadcast...");
+  broadcastAttendance(mmpClient, civicClient).catch(console.error);
+}, { timezone: "America/New_York" });
+
+// New legislation: every Friday at 9am ET
+cron.schedule("0 9 * * 5", () => {
+  console.log("Running legislation broadcast...");
+  broadcastNewLegislation(mmpClient, civicClient).catch(console.error);
+}, { timezone: "America/New_York" });
+
 // --- Start server ---
 
 app.listen(PORT, () => {
