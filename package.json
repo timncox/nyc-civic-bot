@@ -1,0 +1,24 @@
+{
+  "name": "nyc-civic-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MMP bot for NYC district group chats and civic broadcasts",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "serve": "npx tsx src/server.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "express": "^5.2.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.0"
+  }
+}
