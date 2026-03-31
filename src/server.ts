@@ -6,6 +6,8 @@
 
 import express from "express";
 import { createHash } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { McpClient } from "./mcp-client.js";
 import { onboardUser, isOnboarded } from "./onboard.js";
 import {
@@ -31,6 +33,10 @@ const civicClient = new McpClient(CIVIC_URL);
 
 const app = express();
 app.use(express.json());
+
+// Serve landing page
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 // --- Health endpoint ---
 

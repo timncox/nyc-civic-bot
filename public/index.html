@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@nyc_civic — Your Neighborhood Civic Hub</title>
+<meta name="description" content="Join district group chats for your NYC neighborhood. Get civic updates, legislation alerts, and connect with your neighbors.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root {
+    --bg: #07090F;
+    --surface: #0F1319;
+    --surface-hover: #151B24;
+    --border: #1A2030;
+    --border-bright: #243040;
+    --text: #E8E6E3;
+    --text-muted: #7A8494;
+    --text-dim: #4A5568;
+    --green: #00E68A;
+    --green-dim: rgba(0, 230, 138, 0.15);
+    --green-glow: rgba(0, 230, 138, 0.05);
+    --orange: #FF6B35;
+    --orange-dim: rgba(255, 107, 53, 0.15);
+    --cyan: #38BDF8;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'Newsreader', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* — City Grid Background — */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,230,138,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,230,138,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,230,138,0.06), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* — Layout — */
+  .container { max-width: 860px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+  .container-wide { max-width: 1040px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+  /* — Navigation — */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(7, 9, 15, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .inner {
+    max-width: 1040px; margin: 0 auto; padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+  nav .logo {
+    font-family: var(--font-mono);
+    font-weight: 600; font-size: 15px;
+    color: var(--green);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+  nav .links { display: flex; gap: 28px; }
+  nav .links a {
+    font-family: var(--font-mono);
+    font-size: 12px; font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: color 0.2s;
+  }
+  nav .links a:hover { color: var(--text); }
+
+  /* — Section system — */
+  section { padding: 100px 0; }
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: var(--border);
+  }
+  .section-num {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--green);
+    width: 22px; height: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(0,230,138,0.3);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 36px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  p.lead {
+    font-size: 19px;
+    color: var(--text-muted);
+    line-height: 1.75;
+    max-width: 580px;
+  }
+
+  /* — Hero — */
+  .hero {
+    padding-top: 160px;
+    padding-bottom: 80px;
+    position: relative;
+  }
+  .hero-handle {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--green);
+    background: var(--green-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(0,230,138,0.2);
+    margin-bottom: 28px;
+  }
+  .hero-handle .dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .hero h1 {
+    font-size: clamp(42px, 7vw, 72px);
+    margin-bottom: 24px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--green);
+  }
+  .hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 40px;
+  }
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--green);
+    color: var(--bg);
+  }
+  .btn-primary:hover {
+    background: #00ff99;
+    box-shadow: 0 0 30px rgba(0,230,138,0.25);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-bright);
+  }
+  .btn-secondary:hover {
+    background: var(--surface-hover);
+    border-color: var(--text-dim);
+  }
+
+  /* — Divider — */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+  }
+
+  /* — Steps — */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 28px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+  .step-card:hover {
+    border-color: var(--border-bright);
+  }
+  .step-number {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 48px;
+    color: var(--border-bright);
+    line-height: 1;
+    margin-bottom: 20px;
+  }
+  .step-card h3 { margin-bottom: 12px; }
+  .step-card p { font-size: 15px; color: var(--text-muted); line-height: 1.65; }
+
+  /* — Tier cards — */
+  .tier-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+    background: var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tier-card {
+    background: var(--surface);
+    padding: 36px 28px;
+  }
+  .tier-card:first-child { border-radius: 12px 0 0 12px; }
+  .tier-card:last-child { border-radius: 0 12px 12px 0; }
+  .tier-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  .tier-cd .tier-badge { background: var(--green-dim); color: var(--green); }
+  .tier-ad .tier-badge { background: var(--orange-dim); color: var(--orange); }
+  .tier-ed .tier-badge { background: rgba(56,189,248,0.15); color: var(--cyan); }
+  .tier-card h3 { margin-bottom: 8px; }
+  .tier-card .example {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .tier-card p { font-size: 15px; color: var(--text-muted); line-height: 1.6; }
+  .tier-stat {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .tier-stat strong {
+    font-size: 22px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    color: var(--text);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* — Broadcasts — */
+  .broadcast-list {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .broadcast-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 48px 1fr 160px;
+    align-items: start;
+    gap: 20px;
+  }
+  .broadcast-icon {
+    font-size: 28px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-hover);
+    border-radius: 10px;
+  }
+  .broadcast-item h3 { margin-bottom: 6px; }
+  .broadcast-item p { font-size: 14px; color: var(--text-muted); line-height: 1.55; }
+  .broadcast-schedule {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    padding-top: 4px;
+    letter-spacing: 0.02em;
+  }
+  .broadcast-target {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-top: 6px;
+  }
+  .target-cd { background: var(--green-dim); color: var(--green); }
+  .target-ad { background: var(--orange-dim); color: var(--orange); }
+
+  /* — Commands — */
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 40px;
+  }
+  .cmd-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .cmd-group-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmd-group-header h3 { font-size: 16px; }
+  .cmd-group-header p { font-size: 13px; color: var(--text-dim); margin-top: 4px; font-family: var(--font-body); }
+  .cmd-table { width: 100%; }
+  .cmd-table tr { border-bottom: 1px solid var(--border); }
+  .cmd-table tr:last-child { border-bottom: none; }
+  .cmd-table td { padding: 14px 24px; vertical-align: top; }
+  .cmd-table td:first-child {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--green);
+    white-space: nowrap;
+    width: 170px;
+  }
+  .cmd-table td:last-child {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  /* — API Reference — */
+  .api-section { margin-top: 40px; }
+  .api-endpoint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .api-header {
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .api-method {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .method-get { background: var(--green-dim); color: var(--green); }
+  .method-post { background: var(--orange-dim); color: var(--orange); }
+  .api-path {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .api-body {
+    padding: 20px 24px;
+  }
+  .api-body p { font-size: 14px; color: var(--text-muted); margin-bottom: 14px; }
+  .api-body code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: block;
+    color: var(--text-muted);
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .api-body code .key { color: var(--cyan); }
+  .api-body code .str { color: var(--green); }
+  .api-body code .type { color: var(--orange); }
+
+  /* — Message preview — */
+  .msg-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-top: 32px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text-muted);
+    max-width: 540px;
+  }
+  .msg-preview .sender {
+    font-weight: 600;
+    color: var(--green);
+    margin-bottom: 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .msg-preview .sender .tag {
+    font-weight: 400;
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* — CTA — */
+  .cta-section {
+    text-align: center;
+    padding: 100px 0 120px;
+  }
+  .cta-section h2 {
+    font-size: 44px;
+    margin-bottom: 16px;
+  }
+  .cta-section p {
+    color: var(--text-muted);
+    font-size: 18px;
+    margin-bottom: 36px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .cta-code {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 28px;
+    display: inline-block;
+    margin-top: 24px;
+    color: var(--text-muted);
+  }
+  .cta-code .prompt { color: var(--text-dim); }
+  .cta-code .cmd { color: var(--green); }
+
+  /* — Footer — */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0;
+    text-align: center;
+  }
+  footer p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  footer a { color: var(--text-muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  /* — Responsive — */
+  @media (max-width: 768px) {
+    .steps-grid, .tier-grid { grid-template-columns: 1fr; }
+    .tier-card:first-child, .tier-card:last-child { border-radius: 0; }
+    .tier-grid { border-radius: 12px; }
+    .tier-card:first-child { border-radius: 12px 12px 0 0; }
+    .tier-card:last-child { border-radius: 0 0 12px 12px; }
+    .cmd-grid { grid-template-columns: 1fr; }
+    .broadcast-item { grid-template-columns: 1fr; }
+    .broadcast-schedule { text-align: left; }
+    .broadcast-icon { display: none; }
+    nav .links { gap: 16px; }
+  }
+
+  /* — Entrance animations — */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="#" class="logo">@nyc_civic</a>
+    <div class="links">
+      <a href="#how">How It Works</a>
+      <a href="#districts">Districts</a>
+      <a href="#broadcasts">Broadcasts</a>
+      <a href="#commands">Commands</a>
+      <a href="#api">API</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-handle">
+      <span class="dot"></span>
+      @nyc_civic on MMP
+    </div>
+    <h1>Your neighborhood<br><em>civic hub</em></h1>
+    <p class="lead">
+      District group chats for every NYC neighborhood. Get legislation alerts,
+      311 digests, attendance reports, and connect with your neighbors &mdash;
+      all through one bot on MMP.
+    </p>
+    <div class="hero-cta">
+      <a href="https://mmp.chat" class="btn btn-primary" target="_blank">Message @nyc_civic</a>
+      <a href="#api" class="btn btn-secondary">API Reference</a>
+    </div>
+
+    <div class="msg-preview" style="margin-top: 48px;">
+      <div class="sender">@nyc_civic <span class="tag">BOT</span></div>
+      Welcome! Found your districts:<br><br>
+      &nbsp;&nbsp;Council District 1 &mdash; CM Christopher Marte<br>
+      &nbsp;&nbsp;Assembly District 65 &mdash; AM Grace Lee<br>
+      &nbsp;&nbsp;Election District 65-042<br><br>
+      You've been added to 3 groups:<br>
+      &nbsp;&nbsp;&bull; NYC CD-1 (23 members)<br>
+      &nbsp;&nbsp;&bull; NYC AD-65 (8 members)<br>
+      &nbsp;&nbsp;&bull; NYC ED-65-042 (you're the first!)
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section id="how">
+  <div class="container-wide">
+    <div class="section-label"><span class="section-num">1</span> How It Works</div>
+    <h2>Three steps to your<br>civic neighborhood</h2>
+    <p class="lead">DM the bot your address. That's it.</p>
+
+    <div class="steps-grid">
+      <div class="step-card fade-up">
+        <div class="step-number">01</div>
+        <h3>Send your address</h3>
+        <p>DM <strong>@nyc_civic</strong> on MMP with any NYC street address. The bot resolves your council district, assembly district, and election district.</p>
+      </div>
+      <div class="step-card fade-up" style="transition-delay: 0.1s">
+        <div class="step-number">02</div>
+        <h3>Join your groups</h3>
+        <p>The bot creates district group chats on demand and adds you automatically. Three tiers: city council, state assembly, and hyperlocal election district.</p>
+      </div>
+      <div class="step-card fade-up" style="transition-delay: 0.2s">
+        <div class="step-number">03</div>
+        <h3>Get civic updates</h3>
+        <p>Receive weekly 311 digests, new legislation alerts, vote results, and attendance reports directly in your group chats. Discuss with neighbors.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ DISTRICTS ═══ -->
+<section id="districts">
+  <div class="container-wide">
+    <div class="section-label"><span class="section-num">2</span> District Groups</div>
+    <h2>Three tiers of<br>neighborhood</h2>
+    <p class="lead">Every NYC address maps to multiple overlapping political districts. Each gets its own group chat.</p>
+
+    <div class="tier-grid">
+      <div class="tier-card tier-cd fade-up">
+        <span class="tier-badge">Council District</span>
+        <h3>NYC CD-{N}</h3>
+        <div class="example">e.g. NYC CD-1</div>
+        <p>City Council legislation, votes, attendance, and funding. Your most local elected representative.</p>
+        <div class="tier-stat">
+          <strong>51</strong>
+          districts citywide
+        </div>
+      </div>
+      <div class="tier-card tier-ad fade-up" style="transition-delay: 0.1s">
+        <span class="tier-badge">Assembly District</span>
+        <h3>NYC AD-{N}</h3>
+        <div class="example">e.g. NYC AD-65</div>
+        <p>311 complaint trends, crime summaries, community board meetings. State-level representation.</p>
+        <div class="tier-stat">
+          <strong>~150</strong>
+          districts citywide
+        </div>
+      </div>
+      <div class="tier-card tier-ed fade-up" style="transition-delay: 0.2s">
+        <span class="tier-badge">Election District</span>
+        <h3>NYC ED-{AD}-{ED}</h3>
+        <div class="example">e.g. NYC ED-65-042</div>
+        <p>Hyperlocal &mdash; your actual neighbors within a few blocks. Created on demand when the first person joins.</p>
+        <div class="tier-stat">
+          <strong>~6,000</strong>
+          districts citywide
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ BROADCASTS ═══ -->
+<section id="broadcasts">
+  <div class="container">
+    <div class="section-label"><span class="section-num">3</span> Broadcasts</div>
+    <h2>Civic intelligence,<br>delivered</h2>
+    <p class="lead">Automated broadcasts bring civic data to your group chats on a schedule.</p>
+
+    <div class="broadcast-list">
+      <div class="broadcast-item fade-up">
+        <div class="broadcast-icon">311</div>
+        <div>
+          <h3>Weekly 311 Digest</h3>
+          <p>Complaint trends for your assembly district &mdash; noise, sanitation, street conditions, aggregated by type with week-over-week comparison.</p>
+        </div>
+        <div class="broadcast-schedule">
+          Mondays 9 AM ET
+          <br><span class="broadcast-target target-ad">AD groups</span>
+        </div>
+      </div>
+      <div class="broadcast-item fade-up" style="transition-delay: 0.08s">
+        <div class="broadcast-icon" style="font-size: 22px;">att</div>
+        <div>
+          <h3>Attendance Report</h3>
+          <p>Who showed up to the latest City Council stated meeting &mdash; and who didn't. Tracks your council member's participation record.</p>
+        </div>
+        <div class="broadcast-schedule">
+          Wednesdays 10 AM ET
+          <br><span class="broadcast-target target-cd">CD groups</span>
+        </div>
+      </div>
+      <div class="broadcast-item fade-up" style="transition-delay: 0.16s">
+        <div class="broadcast-icon" style="font-size: 22px;">leg</div>
+        <div>
+          <h3>New Legislation</h3>
+          <p>Newly introduced bills, resolutions, and land use items. Includes sponsors, committee assignment, and current status.</p>
+        </div>
+        <div class="broadcast-schedule">
+          Fridays 9 AM ET
+          <br><span class="broadcast-target target-cd">CD groups</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ COMMANDS ═══ -->
+<section id="commands">
+  <div class="container">
+    <div class="section-label"><span class="section-num">4</span> Bot Commands</div>
+    <h2>Talk to the bot</h2>
+
+    <div class="cmd-grid">
+      <div class="cmd-group fade-up">
+        <div class="cmd-group-header">
+          <h3>Direct Messages</h3>
+          <p>DM @nyc_civic privately</p>
+        </div>
+        <table class="cmd-table">
+          <tr><td>join &lt;address&gt;</td><td>Join district groups for your NYC address</td></tr>
+          <tr><td>my reps</td><td>List your elected representatives</td></tr>
+          <tr><td>my districts</td><td>Show your district assignments</td></tr>
+          <tr><td>help</td><td>Show available commands</td></tr>
+        </table>
+      </div>
+      <div class="cmd-group fade-up" style="transition-delay: 0.1s">
+        <div class="cmd-group-header">
+          <h3>Group Mentions</h3>
+          <p>@nyc_civic in any district group</p>
+        </div>
+        <table class="cmd-table">
+          <tr><td>my reps</td><td>Look up your reps (requires prior join)</td></tr>
+          <tr><td>help</td><td>Show group commands</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ API ═══ -->
+<section id="api">
+  <div class="container">
+    <div class="section-label"><span class="section-num">5</span> API Reference</div>
+    <h2>Developer API</h2>
+    <p class="lead" style="margin-bottom: 8px;">The bot exposes REST endpoints for programmatic integration.</p>
+    <p style="font-size: 14px; color: var(--text-dim); margin-bottom: 0;">
+      Base URL: <code style="display: inline; padding: 3px 8px; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted);">https://nyc-civic-bot-production.up.railway.app</code>
+    </p>
+
+    <div class="api-section">
+      <div class="api-endpoint fade-up">
+        <div class="api-header">
+          <span class="api-method method-get">GET</span>
+          <span class="api-path">/health</span>
+        </div>
+        <div class="api-body">
+          <p>Health check. Returns service status.</p>
+          <code>{
+  <span class="key">"status"</span>: <span class="str">"ok"</span>,
+  <span class="key">"service"</span>: <span class="str">"nyc-civic-bot"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-03-30T19:25:51.004Z"</span>
+}</code>
+        </div>
+      </div>
+
+      <div class="api-endpoint fade-up" style="transition-delay: 0.08s">
+        <div class="api-header">
+          <span class="api-method method-get">GET</span>
+          <span class="api-path">/api/group/:key</span>
+        </div>
+        <div class="api-body">
+          <p>Look up a district group by key (e.g. <code style="display:inline;padding:2px 6px;font-size:12px;border:none;background:var(--bg);">CD-1</code>, <code style="display:inline;padding:2px 6px;font-size:12px;border:none;background:var(--bg);">AD-65</code>, <code style="display:inline;padding:2px 6px;font-size:12px;border:none;background:var(--bg);">ED-65-042</code>).</p>
+          <code>{
+  <span class="key">"district_key"</span>: <span class="str">"CD-1"</span>,
+  <span class="key">"tier"</span>: <span class="str">"cd"</span>,
+  <span class="key">"mmp_thread_id"</span>: <span class="str">"thr_abc123"</span>,
+  <span class="key">"district_number"</span>: <span class="type">1</span>,
+  <span class="key">"created_at"</span>: <span class="type">1711828800</span>
+}</code>
+        </div>
+      </div>
+
+      <div class="api-endpoint fade-up" style="transition-delay: 0.16s">
+        <div class="api-header">
+          <span class="api-method method-get">GET</span>
+          <span class="api-path">/api/groups?tier=cd|ad|ed</span>
+        </div>
+        <div class="api-body">
+          <p>List all groups for a given tier. Returns an array of group objects.</p>
+          <code>[
+  { <span class="key">"district_key"</span>: <span class="str">"CD-1"</span>, <span class="key">"tier"</span>: <span class="str">"cd"</span>, ... },
+  { <span class="key">"district_key"</span>: <span class="str">"CD-2"</span>, <span class="key">"tier"</span>: <span class="str">"cd"</span>, ... }
+]</code>
+        </div>
+      </div>
+
+      <div class="api-endpoint fade-up" style="transition-delay: 0.24s">
+        <div class="api-header">
+          <span class="api-method method-post">POST</span>
+          <span class="api-path">/api/join</span>
+        </div>
+        <div class="api-body">
+          <p>Programmatic onboarding &mdash; resolve an address and join the user to district groups.</p>
+          <code><span class="type">// Request body</span>
+{
+  <span class="key">"mmp_user_id"</span>: <span class="str">"user_abc"</span>,
+  <span class="key">"mmp_handle"</span>: <span class="str">"tim"</span>,
+  <span class="key">"address"</span>: <span class="str">"250 Broadway, New York, NY"</span>
+}
+
+<span class="type">// Response</span>
+{
+  <span class="key">"ok"</span>: <span class="type">true</span>,
+  <span class="key">"message"</span>: <span class="str">"Joined 3 groups: CD-1, AD-65, ED-65-042"</span>
+}</code>
+        </div>
+      </div>
+
+      <div class="api-endpoint fade-up" style="transition-delay: 0.32s">
+        <div class="api-header">
+          <span class="api-method method-post">POST</span>
+          <span class="api-path">/webhook/mmp</span>
+        </div>
+        <div class="api-body">
+          <p>MMP webhook receiver. Processes incoming messages (DMs and group mentions). Verified via <code style="display:inline;padding:2px 6px;font-size:12px;border:none;background:var(--bg);">X-Webhook-Signature</code> header.</p>
+          <code><span class="type">// MMP webhook payload</span>
+{
+  <span class="key">"event"</span>: <span class="str">"message"</span>,
+  <span class="key">"message"</span>: {
+    <span class="key">"id"</span>: <span class="str">"msg_xyz"</span>,
+    <span class="key">"from_handle"</span>: <span class="str">"tim"</span>,
+    <span class="key">"body"</span>: <span class="str">"join 250 Broadway, NY"</span>,
+    <span class="key">"is_group"</span>: <span class="type">false</span>
+  }
+}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta-section">
+  <div class="container">
+    <h2>Get started</h2>
+    <p>DM your NYC address to <strong>@nyc_civic</strong> on MMP and join your neighborhood civic groups.</p>
+    <a href="https://mmp.chat" class="btn btn-primary" target="_blank" style="font-size: 14px; padding: 14px 32px;">Open MMP</a>
+    <div class="cta-code">
+      <span class="prompt">&gt;</span> <span class="cmd">join 250 Broadway, New York, NY</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/timcox/nyc-civic-bot">Source</a>
+      &nbsp;&bull;&nbsp;
+      <a href="https://mmp.chat">MMP</a>
+      &nbsp;&bull;&nbsp;
+      Built for NYC
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Intersection observer for fade-in animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  // Smooth scroll for nav links
+  document.querySelectorAll('nav a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+</body>
+</html>

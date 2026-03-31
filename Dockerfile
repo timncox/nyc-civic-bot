@@ -12,6 +12,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist dist/
+COPY public/ public/
 RUN mkdir -p data
 EXPOSE 3002
 CMD ["node", "dist/server.js"]
