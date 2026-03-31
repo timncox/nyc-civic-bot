@@ -306,30 +306,39 @@ let lastSeenMessageId: string | null = null;
 async function pollInbox(): Promise<void> {
   try {
     const inbox = await mmpClient.call<{
-      threads: Array<{
+      messages: Array<{
         id: string;
-        type: string;
-        last_message?: { id: string; from_handle: string; body: string };
+        thread_id: string;
+        thread_type?: string;
+        from_handle: string;
+        to_handle?: string;
+        body: string;
       }>;
     }>("mmp-inbox", {});
 
-    for (const thread of inbox.threads || []) {
-      const msg = thread.last_message;
-      if (!msg || msg.from_handle === "nyc_civic") continue; // skip own messages
-      if (msg.id === lastSeenMessageId) continue; // already processed
+    for (const msg of inbox.messages || []) {
+      if (msg.from_handle === "nyc_civic") continue; // skip own messages
+      if (msg.id === lastSeenMessageId) break; // already seen — inbox is sorted newest first
+
+      if (!lastSeenMessageId) {
+        // First poll — just record the latest, don't process old messages
+        lastSeenMessageId = msg.id;
+        console.log(`[poll] Initial sync — latest message from @${msg.from_handle}`);
+        break;
+      }
 
       lastSeenMessageId = msg.id;
-      console.log(`[poll] New message from @${msg.from_handle}: ${msg.body.slice(0, 50)}`);
+      console.log(`[poll] New message from @${msg.from_handle}: ${msg.body.slice(0, 80)}`);
 
-      // Route through existing handlers
-      if (thread.type === "dm") {
+      const isDM = msg.thread_type === "dm" || !msg.thread_type;
+      if (isDM) {
         await handleDM({
           id: msg.id,
           from: `user:${msg.from_handle}`,
           from_handle: msg.from_handle,
           body: msg.body,
           is_group: false,
-          thread_id: thread.id,
+          thread_id: msg.thread_id,
         });
       } else {
         await handleGroupMessage({
@@ -338,7 +347,7 @@ async function pollInbox(): Promise<void> {
           from_handle: msg.from_handle,
           body: msg.body,
           is_group: true,
-          thread_id: thread.id,
+          thread_id: msg.thread_id,
         });
       }
     }
