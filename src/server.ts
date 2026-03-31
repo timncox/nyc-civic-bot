@@ -298,8 +298,61 @@ cron.schedule("0 9 * * 5", () => {
   broadcastNewLegislation(mmpClient, civicClient).catch(console.error);
 }, { timezone: "America/New_York" });
 
+// --- Inbox polling fallback (MMP webhooks may not deliver reliably) ---
+
+const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || "30000", 10); // 30s default
+let lastSeenMessageId: string | null = null;
+
+async function pollInbox(): Promise<void> {
+  try {
+    const inbox = await mmpClient.call<{
+      threads: Array<{
+        id: string;
+        type: string;
+        last_message?: { id: string; from_handle: string; body: string };
+      }>;
+    }>("mmp-inbox", {});
+
+    for (const thread of inbox.threads || []) {
+      const msg = thread.last_message;
+      if (!msg || msg.from_handle === "nyc_civic") continue; // skip own messages
+      if (msg.id === lastSeenMessageId) continue; // already processed
+
+      lastSeenMessageId = msg.id;
+      console.log(`[poll] New message from @${msg.from_handle}: ${msg.body.slice(0, 50)}`);
+
+      // Route through existing handlers
+      if (thread.type === "dm") {
+        await handleDM({
+          id: msg.id,
+          from: `user:${msg.from_handle}`,
+          from_handle: msg.from_handle,
+          body: msg.body,
+          is_group: false,
+          thread_id: thread.id,
+        });
+      } else {
+        await handleGroupMessage({
+          id: msg.id,
+          from: `user:${msg.from_handle}`,
+          from_handle: msg.from_handle,
+          body: msg.body,
+          is_group: true,
+          thread_id: thread.id,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[poll] Error:", (err as Error).message);
+  }
+}
+
 // --- Start server ---
 
 app.listen(PORT, () => {
   console.log(`nyc-civic-bot listening on :${PORT}`);
+  console.log(`Polling inbox every ${POLL_INTERVAL / 1000}s`);
+  setInterval(pollInbox, POLL_INTERVAL);
+  // Initial poll after 5s
+  setTimeout(pollInbox, 5000);
 });
