@@ -48,7 +48,23 @@ export class McpClient {
       throw new Error(`MCP ${res.status}: ${await res.text()}`);
     }
 
-    const data = (await res.json()) as any;
+    const contentType = res.headers.get("content-type") || "";
+    let data: any;
+
+    if (contentType.includes("text/event-stream")) {
+      // Parse SSE: extract JSON from "data: {...}" lines
+      const text = await res.text();
+      for (const line of text.split("\n")) {
+        if (line.startsWith("data: ")) {
+          data = JSON.parse(line.slice(6));
+          break;
+        }
+      }
+      if (!data) throw new Error("No data in SSE response");
+    } else {
+      data = (await res.json()) as any;
+    }
+
     if (data.error) {
       throw new Error(`MCP error: ${data.error.message}`);
     }
