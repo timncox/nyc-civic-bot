@@ -120,12 +120,15 @@ export async function onboardUser(
           thread_id: group.mmp_thread_id,
           handle: mmpHandle,
         });
-        const groupName = tierDef.nameFn(districtNum as number, lookup);
-        joined.push(groupName);
       } catch (err) {
-        console.error(`Failed to add ${mmpHandle} to ${key}:`, err);
-        continue;
+        const msg = (err as Error).message;
+        if (!msg.includes("already in this group")) {
+          console.error(`Failed to add ${mmpHandle} to ${key}:`, err);
+          continue;
+        }
       }
+      const groupName = tierDef.nameFn(districtNum as number, lookup);
+      joined.push(groupName);
     }
   }
 
