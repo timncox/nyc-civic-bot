@@ -16,18 +16,15 @@ import {
 // --- Types for nyc-civic lookup_address response ---
 
 interface LookupResult {
-  address: string;
+  council?: number;
+  stateAssembly?: number;
+  stateSenate?: number;
+  congressional?: number;
+  communityBoard?: string;
+  electionDistrict?: number;
+  borough?: string;
   lat: number;
   lng: number;
-  districts: {
-    cityCouncil?: number;
-    stateAssembly?: number;
-    stateSenate?: number;
-    congressionalDistrict?: number;
-    communityBoard?: string;
-    electionDistrict?: number;
-    borough?: string;
-  };
 }
 
 // --- Types for MMP group creation response ---
@@ -40,9 +37,9 @@ interface MmpGroupResult {
 // --- District tier definitions ---
 
 const TIERS = [
-  { tier: "council", keyFn: (d: LookupResult["districts"]) => d.cityCouncil ? `council-${d.cityCouncil}` : null, numFn: (d: LookupResult["districts"]) => d.cityCouncil ?? null, nameFn: (n: number) => `NYC Council District ${n}` },
-  { tier: "assembly", keyFn: (d: LookupResult["districts"]) => d.stateAssembly ? `assembly-${d.stateAssembly}` : null, numFn: (d: LookupResult["districts"]) => d.stateAssembly ?? null, nameFn: (n: number) => `NY Assembly District ${n}` },
-  { tier: "borough", keyFn: (d: LookupResult["districts"]) => d.borough ? `borough-${d.borough.toLowerCase().replace(/\s+/g, "-")}` : null, numFn: () => null, nameFn: (_n: number, d: LookupResult["districts"]) => `NYC ${d.borough} Civic Chat` },
+  { tier: "council", keyFn: (d: LookupResult) => d.council ? `council-${d.council}` : null, numFn: (d: LookupResult) => d.council ?? null, nameFn: (n: number) => `NYC Council District ${n}` },
+  { tier: "assembly", keyFn: (d: LookupResult) => d.stateAssembly ? `assembly-${d.stateAssembly}` : null, numFn: (d: LookupResult) => d.stateAssembly ?? null, nameFn: (n: number) => `NY Assembly District ${n}` },
+  { tier: "borough", keyFn: (d: LookupResult) => d.borough ? `borough-${d.borough.toLowerCase().replace(/\s+/g, "-")}` : null, numFn: () => null, nameFn: (_n: number, d: LookupResult) => `NYC ${d.borough} Civic Chat` },
 ] as const;
 
 /**
@@ -66,8 +63,7 @@ export async function onboardUser(
     return `Sorry, I couldn't resolve that address. Please try a full NYC street address (e.g. "350 5th Ave, New York, NY"). Error: ${(err as Error).message}`;
   }
 
-  const districts = lookup.districts;
-  if (!districts.cityCouncil && !districts.stateAssembly) {
+  if (!lookup.council && !lookup.stateAssembly) {
     return `That address doesn't appear to be in New York City. Please provide an NYC street address.`;
   }
 
@@ -76,10 +72,10 @@ export async function onboardUser(
     mmp_user_id: mmpUserId,
     mmp_handle: mmpHandle,
     address,
-    council_district: districts.cityCouncil ?? null,
-    assembly_district: districts.stateAssembly ?? null,
-    election_district: districts.electionDistrict ?? null,
-    borough: districts.borough ?? null,
+    council_district: lookup.council ?? null,
+    assembly_district: lookup.stateAssembly ?? null,
+    election_district: lookup.electionDistrict ?? null,
+    borough: lookup.borough ?? null,
     lat: lookup.lat,
     lng: lookup.lng,
     joined_at: Math.floor(Date.now() / 1000),
@@ -90,15 +86,15 @@ export async function onboardUser(
   const joined: string[] = [];
 
   for (const tierDef of TIERS) {
-    const key = tierDef.keyFn(districts);
+    const key = tierDef.keyFn(lookup);
     if (!key) continue;
 
-    const districtNum = tierDef.numFn(districts);
+    const districtNum = tierDef.numFn(lookup);
     let group = getDistrictGroup(key);
 
     if (!group) {
       // Create a new MMP group for this district
-      const groupName = tierDef.nameFn(districtNum as number, districts);
+      const groupName = tierDef.nameFn(districtNum as number, lookup);
       try {
         const result = await mmpClient.call<MmpGroupResult>("mmp-create-group", {
           name: groupName,
@@ -124,7 +120,7 @@ export async function onboardUser(
           thread_id: group.mmp_thread_id,
           handle: mmpHandle,
         });
-        const groupName = tierDef.nameFn(districtNum as number, districts);
+        const groupName = tierDef.nameFn(districtNum as number, lookup);
         joined.push(groupName);
       } catch (err) {
         console.error(`Failed to add ${mmpHandle} to ${key}:`, err);
