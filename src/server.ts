@@ -5,7 +5,7 @@
  */
 
 import express from "express";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { McpClient } from "./mcp-client.js";
@@ -49,7 +49,7 @@ app.get("/health", (_req, res) => {
 function verifyWebhook(body: string, signature: string | undefined): boolean {
   if (!WEBHOOK_SECRET) return true; // skip if not configured
   if (!signature) return false;
-  const expected = createHash("sha256").update(body + WEBHOOK_SECRET).digest("hex");
+  const expected = createHmac("sha256", WEBHOOK_SECRET).update(body).digest("hex");
   return signature === expected;
 }
 
@@ -72,7 +72,7 @@ interface MmpWebhookPayload {
 app.post("/webhook/mmp", async (req, res) => {
   const rawBody = JSON.stringify(req.body);
 
-  if (!verifyWebhook(rawBody, req.headers["x-webhook-signature"] as string | undefined)) {
+  if (!verifyWebhook(rawBody, (req.headers["x-mmp-signature"] ?? req.headers["x-webhook-signature"]) as string | undefined)) {
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
