@@ -58,6 +58,8 @@ function verifyWebhook(body: string, signature: string | undefined): boolean {
 interface MmpWebhookPayload {
   event: string;
   thread_id?: string;
+  content_type?: string;
+  call_id?: string;
   message?: {
     id: string;
     from: string;
@@ -80,6 +82,27 @@ app.post("/webhook/mmp", async (req, res) => {
   const payload = req.body as MmpWebhookPayload;
 
   try {
+    // Handle structured tool_call messages (Agent Protocol)
+    if (payload.content_type === "tool_call" && payload.message) {
+      const msg = payload.message;
+      try {
+        const { tool, call_id, input } = JSON.parse(msg.body);
+        await handleToolCall(msg.from_handle, msg.from, call_id, tool, input || {});
+      } catch (err) {
+        console.error("Tool call error:", err);
+        if (payload.call_id) {
+          await mmpClient.callTool("mmp-send", {
+            to: `@${msg.from_handle}`,
+            body: JSON.stringify({ call_id: payload.call_id, output: null, error: (err as Error).message }),
+            content_type: "tool_result",
+            call_id: payload.call_id,
+          }).catch(() => {});
+        }
+      }
+      res.json({ ok: true });
+      return;
+    }
+
     if (payload.event === "message" && payload.message) {
       const msg = payload.message;
 
@@ -96,6 +119,82 @@ app.post("/webhook/mmp", async (req, res) => {
     res.status(500).json({ error: "Internal error" });
   }
 });
+
+// --- Structured tool_call handler (Agent Protocol) ---
+
+async function handleToolCall(
+  fromHandle: string,
+  fromId: string,
+  callId: string,
+  toolName: string,
+  input: Record<string, unknown>,
+): Promise<void> {
+  let output: Record<string, unknown> = {};
+  let error: string | null = null;
+
+  try {
+    switch (toolName) {
+      case "join": {
+        const address = input.address as string;
+        if (!address) { error = "Missing required field: address"; break; }
+        const result = await onboardUser(mmpClient, civicClient, fromId, fromHandle, address);
+        output = { message: result };
+        break;
+      }
+      case "my_reps": {
+        const user = getUserDistrict(fromId);
+        if (!user) { error = "Not registered. Use 'join' with an NYC address first."; break; }
+        const reps = await civicClient.call<Record<string, unknown>>("get_reps", { address: user.address });
+        output = reps;
+        break;
+      }
+      case "my_districts": {
+        const user = getUserDistrict(fromId);
+        if (!user) { error = "Not registered. Use 'join' with an NYC address first."; break; }
+        output = {
+          address: user.address,
+          council_district: user.council_district,
+          assembly_district: user.assembly_district,
+          borough: user.borough,
+        };
+        break;
+      }
+      case "get_reps": {
+        const address = input.address as string;
+        if (!address) { error = "Missing required field: address"; break; }
+        const reps = await civicClient.call<Record<string, unknown>>("get_reps", { address });
+        output = reps;
+        break;
+      }
+      case "search_legislation": {
+        const query = input.query as string;
+        if (!query) { error = "Missing required field: query"; break; }
+        const results = await civicClient.call<Record<string, unknown>>("search_legislation", { query });
+        output = results;
+        break;
+      }
+      case "get_votes": {
+        const member = input.member as string;
+        if (!member) { error = "Missing required field: member"; break; }
+        const votes = await civicClient.call<Record<string, unknown>>("get_votes", { member });
+        output = votes;
+        break;
+      }
+      default:
+        error = `Unknown tool: ${toolName}`;
+    }
+  } catch (err) {
+    error = (err as Error).message;
+  }
+
+  // Send tool_result back
+  await mmpClient.callTool("mmp-send", {
+    to: `@${fromHandle}`,
+    body: JSON.stringify({ call_id: callId, output, error }),
+    content_type: "tool_result",
+    call_id: callId,
+  });
+}
 
 // --- DM handler (onboarding + commands) ---
 
@@ -313,6 +412,8 @@ async function pollInbox(): Promise<void> {
         from_handle: string;
         to_handle?: string;
         body: string;
+        content_type?: string;
+        call_id?: string;
       }>;
     }>("mmp-inbox", {});
 
@@ -329,6 +430,17 @@ async function pollInbox(): Promise<void> {
 
       lastSeenMessageId = msg.id;
       console.log(`[poll] New message from @${msg.from_handle}: ${msg.body.slice(0, 80)}`);
+
+      // Handle tool_call messages from polling
+      if (msg.content_type === "tool_call") {
+        try {
+          const { tool, call_id, input } = JSON.parse(msg.body);
+          await handleToolCall(msg.from_handle, `user:${msg.from_handle}`, call_id, tool, input || {});
+        } catch (err) {
+          console.error("[poll] Tool call error:", err);
+        }
+        continue;
+      }
 
       const isDM = msg.thread_type === "dm" || !msg.thread_type;
       if (isDM) {
@@ -364,4 +476,24 @@ app.listen(PORT, () => {
   setInterval(pollInbox, POLL_INTERVAL);
   // Initial poll after 5s
   setTimeout(pollInbox, 5000);
+
+  // Advertise agent protocol capabilities
+  (async () => {
+    try {
+      await mmpClient.callTool("mmp-set_profile", {
+        type: "bot",
+        capabilities: JSON.stringify([
+          { name: "join", description: "Join NYC district group chats by providing a street address", input_schema: { address: { type: "string", required: true, description: "NYC street address e.g. '350 5th Ave, New York, NY'" } } },
+          { name: "my_reps", description: "Get the elected representatives for a registered user" },
+          { name: "my_districts", description: "Get a user's district info (council, assembly, borough)" },
+          { name: "get_reps", description: "Look up elected representatives for any NYC address", input_schema: { address: { type: "string", required: true } } },
+          { name: "search_legislation", description: "Search NYC Council legislation by keyword", input_schema: { query: { type: "string", required: true } } },
+          { name: "get_votes", description: "Get voting records for a council member", input_schema: { member: { type: "string", required: true } } },
+        ]),
+      });
+      console.log("Agent protocol capabilities advertised");
+    } catch (err) {
+      console.error("Failed to set bot profile:", err);
+    }
+  })();
 });
