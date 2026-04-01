@@ -46,9 +46,25 @@ export function getDb(): Database.Database {
       content_hash TEXT NOT NULL,
       sent_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS bot_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   return db;
+}
+
+// --- Bot state ---
+
+export function getState(key: string): string | null {
+  const row = getDb().prepare("SELECT value FROM bot_state WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function setState(key: string, value: string): void {
+  getDb().prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES (?, ?)").run(key, value);
 }
 
 // --- User districts ---

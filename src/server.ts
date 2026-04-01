@@ -14,6 +14,8 @@ import {
   getUserDistrict,
   getDistrictGroup,
   getGroupsByTier,
+  getState,
+  setState,
 } from "./db.js";
 
 // --- Environment ---
@@ -400,7 +402,7 @@ cron.schedule("0 9 * * 5", () => {
 // --- Inbox polling fallback (MMP webhooks may not deliver reliably) ---
 
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || "30000", 10); // 30s default
-let lastSeenMessageId: string | null = null;
+let lastSeenMessageId: string | null = getState("lastSeenMessageId");
 
 async function pollInbox(): Promise<void> {
   try {
@@ -424,11 +426,13 @@ async function pollInbox(): Promise<void> {
       if (!lastSeenMessageId) {
         // First poll — just record the latest, don't process old messages
         lastSeenMessageId = msg.id;
+        setState("lastSeenMessageId", msg.id);
         console.log(`[poll] Initial sync — latest message from @${msg.from_handle}`);
         break;
       }
 
       lastSeenMessageId = msg.id;
+      setState("lastSeenMessageId", msg.id);
       console.log(`[poll] New message from @${msg.from_handle}: ${msg.body.slice(0, 80)}`);
 
       // Handle tool_call messages from polling
