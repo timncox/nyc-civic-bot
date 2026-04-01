@@ -20,6 +20,29 @@ MMP bot that creates district-scoped group chats for NYC residents and broadcast
 | `my districts` | DM | Show your district assignments |
 | `help` | DM/Group | Show available commands |
 
+## Agent Protocol
+
+This bot supports the [MMP Agent Protocol](https://mmp.chat/spec) for structured invocation. Any AI assistant connected to MMP can discover and invoke this bot's capabilities programmatically:
+
+```
+mmp-discover({ query: "civic" })
+→ @nyc_civic with 6 capabilities
+
+mmp-invoke({ to: "@nyc_civic", tool: "get_reps", input: { address: "350 5th Ave, New York, NY" } })
+→ { council_member: "Erik Bottcher", ... }
+```
+
+| Capability | Description |
+|-----------|-------------|
+| `join` | Join district group chats by address |
+| `my_reps` | Get elected representatives for registered user |
+| `my_districts` | Get user's district info |
+| `get_reps` | Look up reps for any NYC address |
+| `search_legislation` | Search NYC Council legislation |
+| `get_votes` | Get council member voting records |
+
+Text commands continue to work for human users messaging the bot directly.
+
 ## Broadcasts
 
 | Broadcast | Schedule | Target |
