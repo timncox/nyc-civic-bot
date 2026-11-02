@@ -4,3 +4,17 @@ dist/
 .env
 data/
 mmp-bot-bridge.mjs
+# --- secrets & local files (added 2026-11-02, GitHub migration) ---
+.claude/worktrees/
+.dev.vars
+.DS_Store
+.env.*
+.env*.local
+.vercel
+*.key
+*.p12
+*.p8
+*.pem
+!.env.example
+!.env.*.example
+!.env.sample
